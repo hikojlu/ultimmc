@@ -265,9 +265,6 @@ option(NBT_USE_ZLIB "Build NBT library with zlib support" OFF)
 option(NBT_BUILD_TESTS "Build NBT library tests" OFF) #FIXME: fix unit tests.
 set(NBT_NAME Launcher_nbt++)
 set(NBT_DEST_DIR ${LIBRARY_DEST_DIR})
-if(POLICY CMP0000)
-    cmake_policy(VERSION 3.5)
-endif()
 add_subdirectory(libraries/libnbtplusplus)
 
 add_subdirectory(libraries/ganalytics) # google analytics library
