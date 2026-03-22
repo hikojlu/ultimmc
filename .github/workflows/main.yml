@@ -222,24 +222,38 @@ jobs:
 
   build-mac:
     name: build-mac
-    runs-on: macos-13
-
+    runs-on: macos-14 # Uses Apple Silicon runner
+  
     steps:
       - uses: actions/checkout@main
         with:
           submodules: 'recursive'
-
+  
+      - name: Setup Java 8
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '8'
+          architecture: 'arm64'
+  
       - name: Cache Dependencies
         uses: actions/cache@main
         with:
           path: /Users/runner/Library/Caches/Homebrew
-          key: ${{ runner.os }}-deps-cache
-
+          key: ${{ runner.os }}-arm64-deps-cache
+  
       - name: Install Dependencies
         run: |
           brew cleanup
           brew install qt@5
-
+  
+      - name: Fix Java Version in CMake
+        run: |
+          # Update Java version in libraries/launcher/CMakeLists.txt and libraries/javacheck/CMakeLists.txt
+          find . -path "*/libraries/*" -name "CMakeLists.txt" -type f -exec sed -i '' 's/-source 7/-source 8/g; s/-target 7/-target 8/g' {} \;
+          # Also check in cmake directory for Java compilation settings
+          find ./cmake -name "*.cmake" -type f -exec sed -i '' 's/-source 7/-source 8/g; s/-target 7/-target 8/g' {} \;
+  
       - name: Build
         run: |
           mkdir build
@@ -248,6 +262,8 @@ jobs:
            -DCMAKE_C_COMPILER=/usr/bin/clang \
            -DCMAKE_CXX_COMPILER=/usr/bin/clang++ \
            -DCMAKE_BUILD_TYPE=Release \
+           -DCMAKE_OSX_ARCHITECTURES=arm64 \
+           -DCMAKE_JAVA_COMPILE_FLAGS="-source 8 -target 8" \
            -DLauncher_NOTIFICATION_URL:STRING=https://files.multimc.org/notifications.json \
            -DCMAKE_INSTALL_PREFIX:PATH="/Users/runner/work/UltimMC/build/dist" \
            -DCMAKE_PREFIX_PATH="$(brew --prefix qt@5)/lib/cmake" \
@@ -256,31 +272,31 @@ jobs:
            -DLauncher_PASTE_EE_API_KEY:STRING=utLvciUouSURFzfjPxLBf5W4ISsUX4pwBDF7N1AfZ \
            -DLauncher_ANALYTICS_ID:STRING=UA-87731965-2 \
            -DLauncher_LAYOUT=mac-bundle \
-           -DLauncher_BUILD_PLATFORM=osx64-5.15.2 \
+           -DLauncher_BUILD_PLATFORM=osxarm64-15.5 \
            -DLauncher_BUG_TRACKER_URL=https://github.com/UltimMC/Launcher/issues \
-           -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13 \
+           -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
            -DLauncher_EMBED_SECRETS=On \
            $GITHUB_WORKSPACE
-
+  
       - name: Compile
         run: |
           cd build
           make -j$(sysctl -n hw.logicalcpu)
-
+  
       - name: Test
         run: |
           cd build
           make test
           cmake -E remove_directory "/Users/runner/work/UltimMC/build/dist"
-
+  
       - name: Install
         run: |
           cd build
           make install
           chmod +x /Users/runner/work/UltimMC/build/dist/UltimMC.app/Contents/MacOS/UltimMC
-
+  
       - name: Upload Artifacts
         uses: actions/upload-artifact@main
         with:
-          name: mmc-cracked-osx64
+          name: mmc-cracked-osxarm64
           path: /Users/runner/work/UltimMC/build/dist
